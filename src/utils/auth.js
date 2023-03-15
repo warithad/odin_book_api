@@ -9,6 +9,11 @@ const generateToken =(user)=>{
     return jwt.sign({id: user.id}, JWT_SECRET, {expiresIn: '1d'});
 }
 
+const verifyPassword = async (password, user) => {
+    return await bcrypt.compare(password, user.password)
+}
+
+// SIGN UP
 exports.signup = [
     body('first_name', 'First name is required').trim().isLength({min: 1}).escape(),
     body('last_name', 'Last name is required').trim().isLength({min: 1}).escape(),
@@ -68,4 +73,46 @@ exports.signup = [
     }
 ]
 
+//SIGN IN
+exports.signin = [
+    body('email', 'Email is Required').isEmail().normalizeEmail().escape(),
+    body('password', 'Password is required').trim().isLength({min: 1}).escape(),
 
+    async (req, res, next) => {
+        const errors = validationResult(body);
+
+        if(!errors.isEmpty()){
+            return res.status(401).json({errors: errors.array()});
+        }
+        const {email, password} = req.body;
+        try {
+
+            const user = await User.findOne({email});
+
+            if(!user){
+                return res.status(401).json({message: 'Account does not exist'});
+            }
+            const isValidated = await verifyPassword(password, user);
+            if(!isValidated){
+                return res.status(401).json({message: 'Username or password is incorrect'})
+            }
+            const token = generateToken(user);
+
+            return res.status(200).json({
+                message: 'Sign in successful',
+                token,
+                user: {
+                    id: user._id,
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    email: user.email,
+                    profile_photo_url: user.profile_photo_url
+                }
+            })
+        }
+        catch (error){
+            res.status(500).json({message: error.message});
+            next(error);
+        }
+    }
+]
