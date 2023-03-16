@@ -10,3 +10,5 @@ router.delete('/friends/reject', userController.reject_request_DELETE)
 router.put('/update', userController.update_user_PUT)
 router.get('/:id', userController.get_user_GET)
 router.get('/', userController.all_users_GET)
+
+module.exports = router;
