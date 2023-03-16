@@ -9,7 +9,7 @@ async function intializeMongoMemoryServer(){
     mongoose.connect(uri);
     mongoose.connection.on('error', (e) => {
         if(e.message.code === 'ETIMEDOUT'){
-            console.log(e);
+            console.log(e.message);
             mongoose.connect(uri);
         }
         console.log(e);

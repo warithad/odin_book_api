@@ -5,7 +5,7 @@
   "main": "app.js",
   "scripts": {
     "start": "nodemon ./bin/www",
-    "test": "jest only src/tests/auth.test.js"
+    "test": "jest only src/tests/userRoute.test.js"
   },
   "repository": {
     "type": "git",
@@ -27,6 +27,7 @@
     "mongoose": "^7.0.1"
   },
   "devDependencies": {
+    "@faker-js/faker": "^7.6.0",
     "jest": "^29.5.0",
     "nodemon": "^2.0.21",
     "supertest": "^6.3.3"

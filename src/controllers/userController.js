@@ -18,16 +18,15 @@ exports.all_users_GET = async (req, res, next) => {
 exports.get_user_GET = async (req, res, next) => {
     try {
         const user = await User.findById(req.params.id)
+                                .select('-password')
+                                .select('-friend_requests')
                                 .populate('friends')
-                                .populate('friend_requests')
-                                .populate('posts')
+                                // .populate('posts')   Commented this line out because the Post model has not been created when testing userController and will return error
                                 .exec();
 
         if(!user){
-            res.status(404).json({message: 'User Not Found'});
-            next();
+           return res.status(404).json({message: 'User Not Found'});
         }
-        delete user.password;
 
         return res.status(200).json({user});
     }catch(err){
@@ -46,25 +45,27 @@ exports.friend_request_POST = async(req, res, next) => {
         const user = await User.findById(req.body.id);
 
         if(!user){
-            res.status(404).json({message: 'User not found'});
-            next();
+           return res.status(404).json({message: 'User not found'});
+
         }
         if(user.friends.includes(req.payload.id)){
-            res.status(409).json({message: 'You are already friends with this user'})
-            next();
+            return res.status(409).json({message: 'You are already friends with this user'})
         }
 
         if(user.friend_requests.includes(req.payload.id)){
-            res.status(409).json({message: 'You already sent a friend request to this user'})
+            return res.status(409).json({message: 'You already sent a friend request to this user'})
         }
         const updatedfriendRequests = [...user.friend_requests, req.payload.id]; 
 
         user.friend_requests = updatedfriendRequests;
 
-        const updatedUser  = await user.save();
-              
-            delete updatedUser.password
-            delete updatedUser.friend_requests
+        await user.save();
+
+        const updatedUser = User.findById(req.body.id)
+                                .select('-password')
+                                .select('-friend_requests')
+                                .populate('friends')
+                                .exec();
 
         return res.status(200).json({
                 message: 'Friend request sent successfully',
@@ -87,11 +88,10 @@ exports.accept_request_PUT = async (req, res, next) => {
         }
 
         if(friend.friends.includes(req.payload.id)){
-            res.status(409).json({message: 'You are already friends with this user'})
-            next()
+            return res.status(409).json({message: 'You are already friends with this user'})
         }
         if(!user.friend_requests.includes(req.body.id)){
-            res.status(400).json({message: 'Friend request from user not found'})
+           return res.status(400).json({message: 'Friend request from user not found'})
         }
         
         //Add user's id to friend's friend array and save
@@ -107,9 +107,13 @@ exports.accept_request_PUT = async (req, res, next) => {
         user.friend_requests = updatedUserFriendReqs;
         user.friends = updatedUserFriends;
 
-        const updatedUser = await user.save();
+        await user.save();
 
-        delete updatedUser.password;
+        const updatedUser = await User.findById(req.payload.id)
+                                .select('-password')
+                                .populate('friends')
+                                .populate('friend_requests')
+                                .exec();
 
         return res.status(200).json({
             message: 'Friend request accepted successfully',
