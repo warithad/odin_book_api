@@ -3,15 +3,26 @@ const jwt = require('jsonwebtoken')
 const {body, validationResult} = require('express-validator')
 const User = require('../models/user')
 
+
 const JWT_SECRET = process.env.JWT_SECRET;
 
 const generateToken =(user)=>{
-    return jwt.sign({id: user.id}, JWT_SECRET, {expiresIn: '1d'});
+    const payload = {
+        id: user._id,
+        iat: Date.now(),
+      };
+    const signedToken = jwt.sign(payload, JWT_SECRET, {expiresIn: '1d'});
+
+    return {
+        token: 'Bearer ' + signedToken,
+        expiresIn: '1d'
+    }
 }
 
 const verifyPassword = async (password, user) => {
     return await bcrypt.compare(password, user.password)
 }
+
 
 // SIGN UP
 exports.signup = [
