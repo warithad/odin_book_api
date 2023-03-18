@@ -1,7 +1,10 @@
 const express = require('express')
 const router = express.Router();
 const userController = require('../controllers/userController');
+const getTokenData = require('../utils/getTokenData')
 
+
+router.use(getTokenData);
 router.post('/friends/request', userController.friend_request_POST)
 router.put('/friends/accept', userController.accept_request_PUT)
 router.delete('/friends/reject', userController.reject_request_DELETE)

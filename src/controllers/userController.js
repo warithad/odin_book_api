@@ -126,8 +126,26 @@ exports.accept_request_PUT = async (req, res, next) => {
 }
 
 //REJECT FRIEND REQUEST
-exports.reject_request_DELETE =(req, res, next)=> {
-    
+exports.reject_request_DELETE = async (req, res, next)=> {
+    const reqId = req.params.id;
+
+    const friend = await User.findById(reqId);
+    if(!friend){
+        res.status(404).json({message: 'User not found'});
+        next();
+    }
+    try {
+        const user = await User.findByIdAndUpdate(req.payload.id, { $pull: {friend_requests: {_id: friend._id}}})
+                                                .select('-password')
+                                                .exec();
+        return res.status(200).json({
+            message: 'Friend request rejected successfully',
+            user
+        })
+    } catch (error) {
+       return res.status(500).json({error: error.message}); 
+    }
+
 }
 
 //UPDATE USER 
