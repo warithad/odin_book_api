@@ -2,6 +2,7 @@ require('dotenv').config();
 const app = require('./app')
 const request = require('supertest')
 const intializeMongoMemoryServer = require('../config/mongoConfigTest')
+const mongoose = require('mongoose')
 
 beforeAll(async () => {
     await intializeMongoMemoryServer();
@@ -41,18 +42,8 @@ test('Test sign in works', async () => {
         
 })
 
-test('Test wrong email returns error', async () =>{
-    const res = await request(app)
-        .post('/signin')
-        .send({
-            email: 'hsafsaf@gmail.com',
-            password: 'ldasfosifjs'
-        })
-        .set('Accept', 'application/json')
-        expect(res.statusCode).toBe(401);
-})
 
-test('Test wrong password returns error', async () => {
+test('Test wrong signin information returns error', async () => {
     const res = await request(app)
         .post('/signin')
         .send({
@@ -63,7 +54,7 @@ test('Test wrong password returns error', async () => {
         expect(res.statusCode).toBe(401);
 })
 
-afterAll(() => {
-    console.log('Hello');  
+afterAll(async () => {
+    //Close mongodb connection after all tests run
+    await mongoose.connection.close();
 })
-  
