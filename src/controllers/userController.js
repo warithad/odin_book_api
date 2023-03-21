@@ -1,4 +1,6 @@
 const User = require('../models/user')
+const Comment = require('../models/comment')
+const Post = require('../models/post')
 const {body, validationResult} = require('express-validator')
 
 
@@ -9,6 +11,7 @@ exports.all_users_GET = async (req, res, next) => {
 
         return res.status(200).json({users});
     }catch(err){
+        console.log(err)
         res.status(500).json({message: err.message});
         return next(err);
     }
@@ -21,7 +24,7 @@ exports.get_user_GET = async (req, res, next) => {
                                 .select('-password')
                                 .select('-friend_requests')
                                 .populate('friends')
-                                // .populate('posts')   Commented this line out because the Post model has not been created when testing userController and will return error
+                                .populate('posts')
                                 .exec();
 
         if(!user){
@@ -35,14 +38,31 @@ exports.get_user_GET = async (req, res, next) => {
     }
 }
 
+//DELETE USER ACCOUNT
+exports.delete_user_DELETE = async (req, res, next) => {
+    try {
+        const user = await User.findByIdAndDelete(req.payload.id);
+
+        if(!user){
+            return res.status(404).json({message: 'User not found'});
+        }
+        const deletedPosts = await Post.deleteMany({author: req.payload.id})
+        const deletedComments = await Comment.deleteMany({author: req.payload.id});
+
+        return res.status(200).json({message: 'User deleted successfully'})
+    }catch(err){
+        return res.status(500).json({error: err.message})
+    }
+}
+
 //SEND FRIEND REQUEST
 exports.friend_request_POST = async(req, res, next) => {
+    const reqUser = req.body.id;
     try {
-        if(req.body.id === req.payload.id){
-            res.status(400).json({message: 'You cannot send a friend request to yourself'});
-            next()
+        if(reqUser === req.payload.id){
+           return res.status(400).json({message: 'You cannot send a friend request to yourself'});
         }
-        const user = await User.findById(req.body.id);
+        const user = await User.findById(reqUser);
 
         if(!user){
            return res.status(404).json({message: 'User not found'});
@@ -61,19 +81,19 @@ exports.friend_request_POST = async(req, res, next) => {
 
         await user.save();
 
-        const updatedUser = User.findById(req.body.id)
+        const updatedUser = await User.findById(req.body.id)
                                 .select('-password')
                                 .select('-friend_requests')
-                                .populate('friends')
+                                .populate('friends', '-password -friend_reqeuests')
                                 .exec();
-
+    
         return res.status(200).json({
                 message: 'Friend request sent successfully',
                 user: updatedUser
             })
     }catch(error){
-        res.status(500).json({message: error.message});
-        next();
+       res.status(500).json({error: error.message});
+       next();
     }
 }
 
@@ -101,7 +121,7 @@ exports.accept_request_PUT = async (req, res, next) => {
 
 
         //Add friend's id to user's friend array and save
-        const updatedUserFriendReqs = user.friend_requests.filter(friendId => friendId !== req.body.id);
+        const updatedUserFriendReqs = user.friend_requests.filter(friendId => friendId != req.body.id);
         const updatedUserFriends = [...user.friends, req.body.id];
         
         user.friend_requests = updatedUserFriendReqs;
@@ -129,20 +149,25 @@ exports.accept_request_PUT = async (req, res, next) => {
 exports.reject_request_DELETE = async (req, res, next)=> {
     const reqId = req.params.id;
 
-    const friend = await User.findById(reqId);
-    if(!friend){
-        res.status(404).json({message: 'User not found'});
-        next();
-    }
     try {
-        const user = await User.findByIdAndUpdate(req.payload.id, { $pull: {friend_requests: {_id: friend._id}}})
-                                                .select('-password')
-                                                .exec();
+        const friend = await User.findById(reqId);
+        if(!friend){
+            res.status(404).json({message: 'User not found'});
+            next();
+        }
+
+        const user = await User.findById(req.payload.id);
+        const updatedfriendRequests = user.friend_requests.filter(fr => fr != reqId);
+        console.log(updatedfriendRequests)  
+        await User.findByIdAndUpdate(req.payload.id, {friend_requests: updatedfriendRequests});
+
+        const updated = await User.findById(req.payload.id);
         return res.status(200).json({
             message: 'Friend request rejected successfully',
-            user
+            user: updated
         })
     } catch (error) {
+        console.log(error.message);
        return res.status(500).json({error: error.message}); 
     }
 
